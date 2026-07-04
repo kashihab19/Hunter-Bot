@@ -1,0 +1,4 @@
+playwright
+pymongo
+google-genai
+requests
