@@ -26,7 +26,9 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "")
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://boosting-service-agency.onrender.com").rstrip("/")
-GEMINI_MODEL = "gemini-2.5-flash"
+
+# 🟢 FIX: Correct Gemini Model Name
+GEMINI_MODEL = "gemini-2.0-flash"
 
 FB_GROUP_IDS_PROFILE_RAW = os.environ.get("FB_GROUP_IDS_PROFILE", "")
 FB_GROUP_IDS_PAGE_RAW = os.environ.get("FB_GROUP_IDS_PAGE", "")
@@ -58,6 +60,10 @@ if genai:
         if k and len(k.strip()) > 5: GEMINI_CLIENTS.append(genai.Client(api_key=k.strip()))
 
 def generate_json_with_fallback(prompt):
+    if not GEMINI_CLIENTS: 
+        send_telegram("⚠️ Debug Error: No Gemini API Key found for Hunter Bot!")
+        return None
+        
     for client in GEMINI_CLIENTS:
         try:
             res = client.models.generate_content(
@@ -68,7 +74,9 @@ def generate_json_with_fallback(prompt):
                 )
             )
             return json.loads(res.text.strip())
-        except Exception: continue
+        except Exception as e: 
+            send_telegram(f"⚠️ Gemini Hunter API Error: {str(e)}") 
+            continue
     return None
 
 def now_utc(): return datetime.now(timezone.utc)
@@ -95,7 +103,6 @@ def monitor_facebook_group(account):
         for g in page_groups: targets.append({"url": f"https://www.facebook.com/groups/{g}/?av={FB_PAGE_ID}", "mode": "page"})
 
     with sync_playwright() as p:
-        # 🟢 গিটহাব অ্যাকশনস-এর জন্য অপ্টিমাইজড ব্রাউজার আর্গুমেন্টস
         browser = p.chromium.launch(
             headless=True, 
             args=[
@@ -105,7 +112,6 @@ def monitor_facebook_group(account):
         ) 
         context = browser.new_context(viewport={'width': 800, 'height': 600}, user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36')
         
-        # 🟢 ভারী এসেটস (ছবি, ভিডিও, ফন্ট) ব্লক করা হলো ফাস্ট রান করার জন্য
         context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "stylesheet", "media", "font", "script", "other"] else route.continue_())
         
         context.add_cookies([{"name": "c_user", "value": account['c_user'], "domain": ".facebook.com", "path": "/"}, {"name": "xs", "value": account['xs'], "domain": ".facebook.com", "path": "/"}])
@@ -144,7 +150,6 @@ def monitor_facebook_group(account):
                     if is_first_comment:
                         send_telegram(f"🔥 New Buyer Found!\n👤 Bot: {account['id']}\n💬 Post: {text[:150]}...\n🔗 Group Link: {url}")
                         
-                    # 🟢 অটোমেটেড কমেন্ট
                     try:
                         human_like_mouse_move(page)
                         c_box = post.locator('div[aria-label*="comment"], div[role="textbox"]').first
@@ -157,7 +162,6 @@ def monitor_facebook_group(account):
                         time.sleep(3) 
                     except: pass
 
-                    # 🟢 অটোমেটেড ইনবক্স (শুধুমাত্র প্রোফাইল মোডের জন্য)
                     if current_mode == "profile":
                         try:
                             a_link = post.locator('a[role="link"][tabindex="0"]').first
@@ -185,8 +189,6 @@ def monitor_facebook_group(account):
                     if seen_posts_col is not None:
                         if is_first_comment: seen_posts_col.insert_one({"_id": post_signature, "commenters": [account['id']], "created_at": now_utc()})
                         else: seen_posts_col.update_one({"_id": post_signature}, {"$push": {"commenters": account['id']}})
-                    
-                    # 🟢 একটি গ্রুপে একটি লিড পাওয়ার পর বাকিগুলো স্কিপ করবে (ব্যান থেকে বাঁচতে)
                     break 
             except: pass
         browser.close()
