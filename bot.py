@@ -28,7 +28,7 @@ FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "")
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://boosting-service-agency.onrender.com").rstrip("/")
 
 # 🟢 FIX: Correct Gemini Model Name
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-1.5-flash"
 
 FB_GROUP_IDS_PROFILE_RAW = os.environ.get("FB_GROUP_IDS_PROFILE", "")
 FB_GROUP_IDS_PAGE_RAW = os.environ.get("FB_GROUP_IDS_PAGE", "")
