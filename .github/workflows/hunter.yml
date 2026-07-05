@@ -48,4 +48,4 @@ jobs:
           FB_XS_4: ${{ secrets.FB_XS_4 }}
           FB_C_USER_5: ${{ secrets.FB_C_USER_5 }}
           FB_XS_5: ${{ secrets.FB_XS_5 }}
-        run: python hunter_bot.py
+        run: python bot.py
