@@ -2,7 +2,6 @@ name: Group Hunter Auto-Bot
 
 on:
   schedule:
-    # 🟢 প্রতি ১ ঘণ্টা পরপর রান করবে (পাবলিক হওয়ায় আনলিমিটেড ফ্রি)
     - cron: '0 * * * *'
   workflow_dispatch:
 
@@ -12,10 +11,10 @@ jobs:
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -31,13 +30,12 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BOT_MONGO_URI: ${{ secrets.BOT_MONGO_URI }}
           BOT_MONGO_DB_NAME: ${{ secrets.BOT_MONGO_DB_NAME }}
-          GEMINI_API_KEY_GROUP: ${{ secrets.GEMINI_API_KEY_GROUP }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           WEBSITE_URL: ${{ secrets.WEBSITE_URL }}
           FB_GROUP_IDS_PROFILE: ${{ secrets.FB_GROUP_IDS_PROFILE }}
           FB_GROUP_IDS_PAGE: ${{ secrets.FB_GROUP_IDS_PAGE }}
           
-          # Accounts
           FB_C_USER_1: ${{ secrets.FB_C_USER_1 }}
           FB_XS_1: ${{ secrets.FB_XS_1 }}
           FB_C_USER_2: ${{ secrets.FB_C_USER_2 }}
