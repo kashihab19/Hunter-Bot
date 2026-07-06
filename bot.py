@@ -22,13 +22,14 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "")
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://boosting-service-agency.onrender.com").rstrip("/")
 
-# 🟢 FIX 2: OpenRouter Setup with Multiple Models Fallback
+# 🟢 FIX 2: OpenRouter Setup (Multiple Lifetime Free Models Fallback)
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OR_MODELS = [
-    "meta-llama/llama-3.3-70b-instruct:free",
     "google/gemini-2.0-flash-lite-preview-02-05:free",
-    "qwen/qwen-2.5-coder-32b-instruct:free",
-    "meta-llama/llama-3.1-8b-instruct:free"
+    "google/gemini-2.0-flash-exp:free",
+    "mistralai/mistral-7b-instruct:free",
+    "huggingfaceh4/zephyr-7b-beta:free",
+    "openchat/openchat-7b:free"
 ]
 
 FB_GROUP_IDS_PROFILE_RAW = os.environ.get("FB_GROUP_IDS_PROFILE", "")
