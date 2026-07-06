@@ -23,6 +23,13 @@ FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "")
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://boosting-service-agency.onrender.com").rstrip("/")
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OR_MODELS = [
+    "google/gemini-2.0-flash-lite-preview-02-05:free",
+    "google/gemini-2.0-flash-exp:free",
+    "mistralai/mistral-7b-instruct:free",
+    "huggingfaceh4/zephyr-7b-beta:free",
+    "openchat/openchat-7b:free"
+]
 
 FB_GROUP_IDS_PROFILE_RAW = os.environ.get("FB_GROUP_IDS_PROFILE", "")
 FB_GROUP_IDS_PAGE_RAW = os.environ.get("FB_GROUP_IDS_PAGE", "")
@@ -49,15 +56,14 @@ if MongoClient and BOT_MONGO_URI:
 # ৩. Unlimited AI Fallback Magic (NO KEY REQUIRED)
 # ==========================================
 def generate_json_with_fallback(prompt):
-    system_prompt = 'You are a JSON assistant. You must output strictly valid JSON only in this format: {"status": "OK" or "IGNORE", "comment": "your comment", "inbox": "your inbox msg"}. Do not add any markdown formatting.'
+    system_prompt = 'You are a JSON assistant. You must output strictly valid JSON only in this format: {"status": "OK" or "IGNORE", "comment": "your comment in Banglish/Bengali", "inbox": "your inbox msg in Banglish/Bengali"}. Do not add any markdown formatting.'
     
-    # ১. প্রথমে OpenRouter এর Auto-Free মডেল ট্রাই করবে
+    # ১. প্রথমে OpenRouter এর ফ্রি মডেল ট্রাই করবে
     if OPENROUTER_API_KEY:
         url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
-        models = ["openrouter/free", "google/gemini-2.0-flash-lite-preview-02-05:free"]
         
-        for model in models:
+        for model in OR_MODELS:
             try:
                 data = {"model": model, "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]}
                 res = requests.post(url, headers=headers, json=data, timeout=15)
@@ -149,9 +155,9 @@ def monitor_facebook_group(account):
                     
                     if already_commented: continue 
 
-                    prompt = f"""Nicher facebook post poro. Follower, watchtime, boost kinte chaile "status" e "OK" likhbe. Irrelevant hole "IGNORE". Comment e inbox check korte bolbe. Post: '{text}'"""
+                    prompt = f"""Read this Facebook post. If they want to buy followers, watchtime, boost, or service, write "OK" in status. If irrelevant, write "IGNORE". Write a short Banglish/Bengali comment asking them to check inbox. Post: '{text}'"""
                     ai_data = generate_json_with_fallback(prompt)
-                    if not ai_data or ai_data.get("status") == "IGNORE": continue 
+                    if not ai_data or ai_data.get("status", "").upper() == "IGNORE": continue 
                         
                     if is_first_comment:
                         send_telegram(f"🔥 New Buyer Found!\n👤 Bot: {account['id']}\n💬 Post: {text[:150]}...\n🔗 Group Link: {url}")
