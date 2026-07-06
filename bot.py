@@ -11,11 +11,6 @@ try:
     from pymongo import MongoClient
 except ImportError:
     MongoClient = None
-try:
-    from google import genai
-    from google.genai import types 
-except ImportError:
-    genai = None
 
 # ==========================================
 # ১. Environment Variables
@@ -27,8 +22,9 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "")
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://boosting-service-agency.onrender.com").rstrip("/")
 
-# 🟢 FIX: Correct Gemini Model Name
-GEMINI_MODEL = "gemini-1.5-flash"
+# 🟢 OpenRouter Setup
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OR_MODEL = "google/gemini-2.0-pro-exp-02-05:free"
 
 FB_GROUP_IDS_PROFILE_RAW = os.environ.get("FB_GROUP_IDS_PROFILE", "")
 FB_GROUP_IDS_PAGE_RAW = os.environ.get("FB_GROUP_IDS_PAGE", "")
@@ -52,32 +48,41 @@ if MongoClient and BOT_MONGO_URI:
     except Exception: pass
 
 # ==========================================
-# ৩. AI & Helpers
+# ৩. OpenRouter AI & Helpers
 # ==========================================
-GEMINI_CLIENTS = []
-if genai:
-    for k in [os.environ.get("GEMINI_API_KEY_GROUP", ""), os.environ.get("GEMINI_API_KEY_BACKUP_1", "")]:
-        if k and len(k.strip()) > 5: GEMINI_CLIENTS.append(genai.Client(api_key=k.strip()))
-
 def generate_json_with_fallback(prompt):
-    if not GEMINI_CLIENTS: 
-        send_telegram("⚠️ Debug Error: No Gemini API Key found for Hunter Bot!")
+    if not OPENROUTER_API_KEY: 
+        send_telegram("⚠️ Debug Error: No OPENROUTER_API_KEY found for Hunter Bot!")
         return None
         
-    for client in GEMINI_CLIENTS:
-        try:
-            res = client.models.generate_content(
-                model=GEMINI_MODEL, contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema={"type": "OBJECT", "properties": {"status": {"type": "STRING"}, "comment": {"type": "STRING"}, "inbox": {"type": "STRING"}}, "required": ["status", "comment", "inbox"]}
-                )
-            )
-            return json.loads(res.text.strip())
-        except Exception as e: 
-            send_telegram(f"⚠️ Gemini Hunter API Error: {str(e)}") 
-            continue
-    return None
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}", 
+        "Content-Type": "application/json"
+    }
+    
+    system_prompt = 'You are a JSON assistant. You must output strictly valid JSON only in this format: {"status": "OK or IGNORE", "comment": "your comment", "inbox": "your inbox msg"}. Do not add any markdown formatting.'
+    data = {
+        "model": OR_MODEL, 
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ]
+    }
+    
+    try:
+        res = requests.post(url, headers=headers, json=data, timeout=20)
+        if res.status_code == 200:
+            content = res.json()['choices'][0]['message']['content'].strip()
+            if "```json" in content: content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content: content = content.split("```")[1].split("```")[0].strip()
+            return json.loads(content)
+        else:
+            send_telegram(f"⚠️ OpenRouter API Error: {res.text}")
+            return None
+    except Exception as e: 
+        send_telegram(f"⚠️ API Request Error: {str(e)}") 
+        return None
 
 def now_utc(): return datetime.now(timezone.utc)
 
@@ -124,7 +129,7 @@ def monitor_facebook_group(account):
             try:
                 page.goto(url, timeout=60000) 
                 time.sleep(random.uniform(3.5, 5.5))
-                page.mouse.wheel(0, 600)
+                page.mouse.wheel(0, 500)
                 time.sleep(random.uniform(2.5, 4.0))
 
                 posts = page.locator('div[role="feed"] > div, div[data-pagelet*="FeedUnit"]').all()
