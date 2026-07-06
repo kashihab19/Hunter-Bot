@@ -22,9 +22,14 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "")
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://boosting-service-agency.onrender.com").rstrip("/")
 
-# 🟢 FIX 2: OpenRouter Setup
+# 🟢 FIX 2: OpenRouter Setup with Multiple Models Fallback
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OR_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
+OR_MODELS = [
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "google/gemini-2.0-flash-lite-preview-02-05:free",
+    "qwen/qwen-2.5-coder-32b-instruct:free",
+    "meta-llama/llama-3.1-8b-instruct:free"
+]
 
 FB_GROUP_IDS_PROFILE_RAW = os.environ.get("FB_GROUP_IDS_PROFILE", "")
 FB_GROUP_IDS_PAGE_RAW = os.environ.get("FB_GROUP_IDS_PAGE", "")
@@ -48,7 +53,7 @@ if MongoClient and BOT_MONGO_URI:
     except Exception: pass
 
 # ==========================================
-# ৩. OpenRouter AI & Helpers
+# ৩. OpenRouter AI & Helpers (Multiple Fallbacks)
 # ==========================================
 def generate_json_with_fallback(prompt):
     if not OPENROUTER_API_KEY: 
@@ -62,27 +67,36 @@ def generate_json_with_fallback(prompt):
     }
     
     system_prompt = 'You are a JSON assistant. You must output strictly valid JSON only in this format: {"status": "OK" or "IGNORE", "comment": "your comment", "inbox": "your inbox msg"}. Do not add any markdown formatting.'
-    data = {
-        "model": OR_MODEL, 
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ]
-    }
     
-    try:
-        res = requests.post(url, headers=headers, json=data, timeout=20)
-        if res.status_code == 200:
-            content = res.json()['choices'][0]['message']['content'].strip()
-            if "```json" in content: content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content: content = content.split("```")[1].split("```")[0].strip()
-            return json.loads(content)
-        else:
-            send_telegram(f"⚠️ OpenRouter API Error: {res.text}")
-            return None
-    except Exception as e: 
-        send_telegram(f"⚠️ API Request Error: {str(e)}") 
-        return None
+    last_error = ""
+    for model in OR_MODELS:
+        data = {
+            "model": model, 
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ]
+        }
+        
+        try:
+            res = requests.post(url, headers=headers, json=data, timeout=20)
+            if res.status_code == 200:
+                content = res.json()['choices'][0]['message']['content'].strip()
+                if "```json" in content: content = content.split("```json")[1].split("```")[0].strip()
+                elif "```" in content: content = content.split("```")[1].split("```")[0].strip()
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError:
+                    continue # JSON Parse fail hole porer model e try korbe
+            else:
+                last_error = res.text
+                continue
+        except Exception as e: 
+            last_error = str(e)
+            continue
+            
+    send_telegram(f"⚠️ OpenRouter Error: All models failed! Last Error: {last_error[:200]}")
+    return None
 
 def now_utc(): return datetime.now(timezone.utc)
 
