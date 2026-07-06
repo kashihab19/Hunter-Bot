@@ -22,14 +22,17 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "")
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://boosting-service-agency.onrender.com").rstrip("/")
 
-# 🟢 FIX 2: OpenRouter Setup (Multiple Lifetime Free Models Fallback)
+# 🟢 FIX: 8 Bulletproof Lifetime Free Models List
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OR_MODELS = [
     "google/gemini-2.0-flash-lite-preview-02-05:free",
     "google/gemini-2.0-flash-exp:free",
-    "mistralai/mistral-7b-instruct:free",
-    "huggingfaceh4/zephyr-7b-beta:free",
-    "openchat/openchat-7b:free"
+    "google/gemini-1.5-flash:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "meta-llama/llama-3.2-1b-instruct:free",
+    "google/gemma-2-9b-it:free",
+    "qwen/qwen-2.5-coder-32b-instruct:free",
+    "deepseek/deepseek-r1-distill-llama-70b:free"
 ]
 
 FB_GROUP_IDS_PROFILE_RAW = os.environ.get("FB_GROUP_IDS_PROFILE", "")
@@ -64,7 +67,9 @@ def generate_json_with_fallback(prompt):
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}", 
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": WEBSITE_URL if WEBSITE_URL else "https://boosting-service-agency.com", 
+        "X-Title": "BSA Hunter Bot"
     }
     
     system_prompt = 'You are a JSON assistant. You must output strictly valid JSON only in this format: {"status": "OK" or "IGNORE", "comment": "your comment", "inbox": "your inbox msg"}. Do not add any markdown formatting.'
@@ -88,15 +93,15 @@ def generate_json_with_fallback(prompt):
                 try:
                     return json.loads(content)
                 except json.JSONDecodeError:
-                    continue # JSON Parse fail hole porer model e try korbe
+                    continue 
             else:
-                last_error = res.text
+                last_error = f"[{model}] {res.text}"
                 continue
         except Exception as e: 
-            last_error = str(e)
+            last_error = f"[{model}] {str(e)}"
             continue
             
-    send_telegram(f"⚠️ OpenRouter Error: All models failed! Last Error: {last_error[:200]}")
+    send_telegram(f"⚠️ OpenRouter Error: All models failed! Last Error: {last_error[:250]}")
     return None
 
 def now_utc(): return datetime.now(timezone.utc)
