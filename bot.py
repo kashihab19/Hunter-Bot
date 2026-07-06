@@ -22,18 +22,7 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "")
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://boosting-service-agency.onrender.com").rstrip("/")
 
-# 🟢 FIX: 8 Bulletproof Lifetime Free Models List
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OR_MODELS = [
-    "google/gemini-2.0-flash-lite-preview-02-05:free",
-    "google/gemini-2.0-flash-exp:free",
-    "google/gemini-1.5-flash:free",
-    "meta-llama/llama-3.2-3b-instruct:free",
-    "meta-llama/llama-3.2-1b-instruct:free",
-    "google/gemma-2-9b-it:free",
-    "qwen/qwen-2.5-coder-32b-instruct:free",
-    "deepseek/deepseek-r1-distill-llama-70b:free"
-]
 
 FB_GROUP_IDS_PROFILE_RAW = os.environ.get("FB_GROUP_IDS_PROFILE", "")
 FB_GROUP_IDS_PAGE_RAW = os.environ.get("FB_GROUP_IDS_PAGE", "")
@@ -57,51 +46,43 @@ if MongoClient and BOT_MONGO_URI:
     except Exception: pass
 
 # ==========================================
-# ৩. OpenRouter AI & Helpers (Multiple Fallbacks)
+# ৩. Unlimited AI Fallback Magic (NO KEY REQUIRED)
 # ==========================================
 def generate_json_with_fallback(prompt):
-    if not OPENROUTER_API_KEY: 
-        send_telegram("⚠️ Debug Error: No OPENROUTER_API_KEY found for Hunter Bot! Please add it to GitHub Secrets.")
-        return None
-        
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}", 
-        "Content-Type": "application/json",
-        "HTTP-Referer": WEBSITE_URL if WEBSITE_URL else "https://boosting-service-agency.com", 
-        "X-Title": "BSA Hunter Bot"
-    }
-    
     system_prompt = 'You are a JSON assistant. You must output strictly valid JSON only in this format: {"status": "OK" or "IGNORE", "comment": "your comment", "inbox": "your inbox msg"}. Do not add any markdown formatting.'
     
-    last_error = ""
-    for model in OR_MODELS:
-        data = {
-            "model": model, 
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ]
-        }
+    # ১. প্রথমে OpenRouter এর Auto-Free মডেল ট্রাই করবে
+    if OPENROUTER_API_KEY:
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+        models = ["openrouter/free", "google/gemini-2.0-flash-lite-preview-02-05:free"]
         
-        try:
-            res = requests.post(url, headers=headers, json=data, timeout=20)
-            if res.status_code == 200:
-                content = res.json()['choices'][0]['message']['content'].strip()
-                if "```json" in content: content = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content: content = content.split("```")[1].split("```")[0].strip()
-                try:
-                    return json.loads(content)
-                except json.JSONDecodeError:
-                    continue 
-            else:
-                last_error = f"[{model}] {res.text}"
-                continue
-        except Exception as e: 
-            last_error = f"[{model}] {str(e)}"
-            continue
-            
-    send_telegram(f"⚠️ OpenRouter Error: All models failed! Last Error: {last_error[:250]}")
+        for model in models:
+            try:
+                data = {"model": model, "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]}
+                res = requests.post(url, headers=headers, json=data, timeout=15)
+                if res.status_code == 200:
+                    content = res.json()['choices'][0]['message']['content'].strip()
+                    if "```json" in content: content = content.split("```json")[1].split("```")[0].strip()
+                    elif "```" in content: content = content.split("```")[1].split("```")[0].strip()
+                    try: return json.loads(content)
+                    except: pass
+            except: pass
+
+    # ২. 🟢 SECRET HACK: Pollinations AI (No API Key, No Limit, 100% Free)
+    try:
+        url = "https://text.pollinations.ai/"
+        data = {"messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}], "model": "openai", "jsonMode": True}
+        res = requests.post(url, json=data, timeout=20)
+        if res.status_code == 200 and len(res.text) > 2:
+            content = res.text.strip()
+            if "```json" in content: content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content: content = content.split("```")[1].split("```")[0].strip()
+            try: return json.loads(content)
+            except: pass
+    except Exception as e:
+        send_telegram(f"🚨 Hunter AI Failed! Error: {str(e)[:150]}")
+        
     return None
 
 def now_utc(): return datetime.now(timezone.utc)
