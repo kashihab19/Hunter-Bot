@@ -22,9 +22,9 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "")
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://boosting-service-agency.onrender.com").rstrip("/")
 
-# 🟢 OpenRouter Setup
+# 🟢 FIX 2: OpenRouter Setup
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OR_MODEL = "google/gemini-2.0-pro-exp-02-05:free"
+OR_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
 FB_GROUP_IDS_PROFILE_RAW = os.environ.get("FB_GROUP_IDS_PROFILE", "")
 FB_GROUP_IDS_PAGE_RAW = os.environ.get("FB_GROUP_IDS_PAGE", "")
@@ -52,7 +52,7 @@ if MongoClient and BOT_MONGO_URI:
 # ==========================================
 def generate_json_with_fallback(prompt):
     if not OPENROUTER_API_KEY: 
-        send_telegram("⚠️ Debug Error: No OPENROUTER_API_KEY found for Hunter Bot!")
+        send_telegram("⚠️ Debug Error: No OPENROUTER_API_KEY found for Hunter Bot! Please add it to GitHub Secrets.")
         return None
         
     url = "https://openrouter.ai/api/v1/chat/completions"
@@ -61,7 +61,7 @@ def generate_json_with_fallback(prompt):
         "Content-Type": "application/json"
     }
     
-    system_prompt = 'You are a JSON assistant. You must output strictly valid JSON only in this format: {"status": "OK or IGNORE", "comment": "your comment", "inbox": "your inbox msg"}. Do not add any markdown formatting.'
+    system_prompt = 'You are a JSON assistant. You must output strictly valid JSON only in this format: {"status": "OK" or "IGNORE", "comment": "your comment", "inbox": "your inbox msg"}. Do not add any markdown formatting.'
     data = {
         "model": OR_MODEL, 
         "messages": [
