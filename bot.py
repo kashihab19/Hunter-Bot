@@ -13,7 +13,7 @@ except ImportError:
     MongoClient = None
 
 # ==========================================
-# ১. Environment Variables
+# 1. Environment Variables
 # ==========================================
 BOT_MONGO_URI = os.environ.get("BOT_MONGO_URI", "")
 BOT_MONGO_DB_NAME = os.environ.get("BOT_MONGO_DB_NAME", "facebook_bot_db")
@@ -42,7 +42,7 @@ for i in range(1, 6):
         ACCOUNTS.append({"id": f"Account_{i}", "c_user": c_user, "xs": xs})
 
 # ==========================================
-# ২. Database Initialization
+# 2. Database Initialization
 # ==========================================
 bot_db, seen_posts_col = None, None
 if MongoClient and BOT_MONGO_URI:
@@ -53,12 +53,12 @@ if MongoClient and BOT_MONGO_URI:
     except Exception: pass
 
 # ==========================================
-# ৩. Unlimited AI Fallback Magic (NO KEY REQUIRED)
+# 3. Unlimited AI Fallback Magic (NO KEY REQUIRED)
 # ==========================================
 def generate_json_with_fallback(prompt):
     system_prompt = 'You are a JSON assistant. You must output strictly valid JSON only in this format: {"status": "OK" or "IGNORE", "comment": "your comment in Banglish/Bengali", "inbox": "your inbox msg in Banglish/Bengali"}. Do not add any markdown formatting.'
     
-    # ১. প্রথমে OpenRouter এর ফ্রি মডেল ট্রাই করবে
+    # 1. Prothome OpenRouter er free model try korbe
     if OPENROUTER_API_KEY:
         url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
@@ -75,7 +75,7 @@ def generate_json_with_fallback(prompt):
                     except: pass
             except: pass
 
-    # ২. 🟢 SECRET HACK: Pollinations AI (No API Key, No Limit, 100% Free)
+    # 2. 🟢 SECRET HACK: Pollinations AI (No API Key, No Limit, 100% Free)
     try:
         url = "https://text.pollinations.ai/"
         data = {"messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}], "model": "openai", "jsonMode": True}
@@ -105,7 +105,7 @@ def human_like_mouse_move(page):
     except: pass
 
 # ==========================================
-# ৪. ENGINE: Playwright Group Hunter
+# 4. ENGINE: Playwright Group Hunter
 # ==========================================
 def monitor_facebook_group(account):
     profile_groups = [g.strip() for g in FB_GROUP_IDS_PROFILE_RAW.split(",") if g.strip()]
@@ -135,12 +135,20 @@ def monitor_facebook_group(account):
             url, current_mode = target["url"], target["mode"]
             try:
                 page.goto(url, timeout=60000) 
-                time.sleep(random.uniform(3.5, 5.5))
-                page.mouse.wheel(0, 500)
-                time.sleep(random.uniform(2.5, 4.0))
+                time.sleep(random.uniform(4.5, 6.5))
+                
+                # Logout Check & Alert
+                if page.locator('input[name="email"], input[id="email"]').is_visible() or "login" in page.url:
+                    send_telegram(f"⚠️ <b>Account Logged Out!</b>\n{account['id']} er cookies expire hoye geche. GitHub Secrets theke notun c_user & xs update korun!")
+                    break
+
+                # Scroll multiple times to load 10 posts
+                for _ in range(3):
+                    page.mouse.wheel(0, 1200)
+                    time.sleep(random.uniform(2.5, 4.0))
 
                 posts = page.locator('div[role="feed"] > div, div[data-pagelet*="FeedUnit"]').all()
-                for post in posts[:3]: 
+                for post in posts[:10]: # Checking top 10 posts
                     text = post.inner_text().lower()
                     if not any(w in text for w in keywords): continue
 
@@ -206,14 +214,13 @@ def monitor_facebook_group(account):
         browser.close()
 
 # ==========================================
-# ৫. Main Execution for GitHub Actions
+# 5. Main Execution for GitHub Actions
 # ==========================================
 if __name__ == "__main__":
     send_telegram("🚀 GitHub Actions: BSA Hunter Bot Scan Started!")
     if ACCOUNTS:
         for account in ACCOUNTS:
-            try: 
-                monitor_facebook_group(account)
+            try: monitor_facebook_group(account)
             except Exception: pass
             time.sleep(random.randint(15, 30))
     send_telegram("✅ GitHub Actions: Scan Complete. Bot going to sleep until next schedule.")
